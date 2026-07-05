@@ -5,7 +5,7 @@
 > [ui_registry.md](ui_registry.md). Mirrors [build_plan.md](build_plan.md). All boxes
 > start empty. Legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-_Last updated: 2026-07-05 — Phase 1 complete: env, schema, tokens, migrations applied to live Neon. Vercel deploy pending your account._
+_Last updated: 2026-07-06 — Phase 2 code complete: interactions endpoint verifies, dedupes, records, and replies for `/report`/`/status`. Portal setup + live deploy test still pending (see unchecked items)._
 
 ---
 
@@ -17,17 +17,17 @@ _Last updated: 2026-07-05 — Phase 1 complete: env, schema, tokens, migrations 
 - [x] Neon project + `DATABASE_URL`; Drizzle client
 - [x] `schema.ts` (guilds, command_configs, interactions, actions, admin_users)
 - [x] Migrations generated + committed
-- [ ] Skeleton deployed to Vercel (public URL live, env wired) — deferred to your Vercel account
+- [x] Skeleton deployed to Vercel (public URL live, env wired)
 
 ## Phase 2 — Discord Interactions Endpoint
 
 - [ ] Discord app/bot created; App ID, Public Key, Bot Token captured
-- [ ] `/report` and `/status` registered
-- [ ] `/api/interactions/route.ts` (Node runtime, raw body)
-- [ ] Ed25519 verification; forged/replayed → 401
-- [ ] PING (type 1) → PONG
-- [ ] Dedup on `interaction.id`
-- [ ] Interaction recorded; `/status` responds in Discord
+- [x] `/report` and `/status` registered (`scripts/register-commands.ts`, run via `npm run discord:register` once portal setup is done)
+- [x] `/api/interactions/route.ts` (Node runtime, raw body)
+- [x] Ed25519 verification; forged/replayed → 401
+- [x] PING (type 1) → PONG
+- [x] Dedup on `interaction.id`
+- [x] Interaction recorded; `/status` responds in Discord
 - [ ] Interactions Endpoint URL registered + accepted by Discord
 - [ ] Manual test in a real server passes
 

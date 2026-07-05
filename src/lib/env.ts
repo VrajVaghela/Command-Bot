@@ -28,11 +28,13 @@ const serverSchema = z.object({
   // Required from Phase 1 onward — the app cannot boot without a database.
   DATABASE_URL: z.string().url(),
 
-  // Phase 2+ (Discord interactions endpoint). Optional now so the skeleton boots
-  // before the Discord application exists; tighten to required in Phase 2.
-  DISCORD_APP_ID: optionalString,
-  DISCORD_PUBLIC_KEY: optionalString,
-  DISCORD_BOT_TOKEN: optionalString,
+  // Phase 2 (Discord interactions endpoint) — required now that it's live.
+  DISCORD_APP_ID: z.string().min(1),
+  DISCORD_PUBLIC_KEY: z.string().min(1),
+  DISCORD_BOT_TOKEN: z.string().min(1),
+  // Dev-only: target server for instant guild-scoped command registration
+  // (scripts/register-commands.ts). Not needed once commands are global.
+  DISCORD_DEV_GUILD_ID: optionalString,
 
   // Phase 4+ (Auth.js session signing). Required once auth lands.
   AUTH_SECRET: optionalString,

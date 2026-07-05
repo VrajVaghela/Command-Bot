@@ -11,10 +11,12 @@
     "format:check": "prettier --check .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "discord:register": "tsx --env-file=.env.local scripts/register-commands.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "discord-interactions": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "next": "15.5.20",
     "react": "19.1.0",
@@ -36,6 +38,7 @@
     "prettier": "^3.9.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.0",
     "typescript": "^5"
   }
 }
