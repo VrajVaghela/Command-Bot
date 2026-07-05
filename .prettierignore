@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+build
+drizzle
+package-lock.json
+next-env.d.ts
+
+# Authored planning/reference docs — keep as written, don't reformat.
+agents.md
+problem.md
+context/
