@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens (ui_tokens.md). Never hard-code visual values in JSX — reference
+ * these via Tailwind theme utilities (bg-background, text-muted-foreground,
+ * bg-success, ring-ring, …). :root = light; .dark = dark. The app defaults to dark
+ * (class set on <html>), since it's an ops dashboard.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 0 0% 100%;
+  --foreground: 222 30% 12%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 16% 42%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 12%;
+  --border: 214 20% 88%;
+  --input: 214 20% 88%;
+  --ring: 243 75% 59%;
+
+  --primary: 243 75% 59%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 215 20% 92%;
+  --secondary-foreground: 222 30% 20%;
+  --accent: 262 83% 66%;
+  --accent-foreground: 0 0% 100%;
+
+  /* Semantic status — map to action/interaction status. */
+  --success: 142 71% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 222 30% 12%;
+  --danger: 0 72% 51%;
+  --danger-foreground: 0 0% 100%;
+  --info: 243 75% 59%;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+.dark {
+  --background: 222 30% 8%;
+  --foreground: 210 20% 96%;
+  --muted: 222 24% 14%;
+  --muted-foreground: 215 16% 62%;
+  --card: 222 26% 11%;
+  --card-foreground: 210 20% 96%;
+  --border: 222 20% 20%;
+  --input: 222 20% 20%;
+  --ring: 243 80% 66%;
+
+  --primary: 243 80% 66%;
+  --primary-foreground: 222 30% 8%;
+  --secondary: 222 20% 20%;
+  --secondary-foreground: 210 20% 96%;
+  --accent: 262 83% 70%;
+  --accent-foreground: 222 30% 8%;
+
+  --success: 142 65% 45%;
+  --warning: 38 92% 55%;
+  --danger: 0 72% 58%;
+  --info: 243 80% 66%;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-danger: hsl(var(--danger));
+  --color-danger-foreground: hsl(var(--danger-foreground));
+  --color-info: hsl(var(--info));
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
