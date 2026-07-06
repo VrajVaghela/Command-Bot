@@ -5,7 +5,9 @@
 > [ui_registry.md](ui_registry.md). Mirrors [build_plan.md](build_plan.md). All boxes
 > start empty. Legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-_Last updated: 2026-07-06 — Phase 2 complete: Discord app created, commands registered, endpoint verified/deployed, and `/status` + `/report` tested live in Discord._
+_Last updated: 2026-07-06 — Phase 3 complete: rule engine, deferred `/report` (type 5) +
+follow-up, channel post + mirror with idempotent retry-tracked `actions` rows, and a
+`/api/mirror/retry` recovery route._
 
 ---
 
@@ -33,13 +35,13 @@ _Last updated: 2026-07-06 — Phase 2 complete: Discord app created, commands re
 
 ## Phase 3 — Rules, Discord Response & Mirror
 
-- [ ] Rule engine reads `command_configs.rule` from DB
-- [ ] Immediate vs deferred (type 5) + follow-up within ~3s
-- [ ] `/report` posts to configured `post_channel_id`
-- [ ] Mirror to 2nd channel (Slack webhook OR Discord webhook)
-- [ ] `actions` rows recorded with status + attempts
-- [ ] Downstream failure → recorded + retried, no data loss
-- [ ] Duplicate delivery → single action set (idempotent)
+- [x] Rule engine reads `command_configs.rule` from DB
+- [x] Immediate vs deferred (type 5) + follow-up within ~3s
+- [x] `/report` posts to configured `post_channel_id`
+- [x] Mirror to 2nd channel (Slack webhook OR Discord webhook)
+- [x] `actions` rows recorded with status + attempts
+- [x] Downstream failure → recorded + retried, no data loss
+- [x] Duplicate delivery → single action set (idempotent)
 
 ## Phase 4 — Auth & Dashboard (MVP complete)
 

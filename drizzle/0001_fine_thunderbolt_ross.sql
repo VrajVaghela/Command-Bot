@@ -1,0 +1,1 @@
+ALTER TABLE "actions" ADD CONSTRAINT "actions_interaction_kind_unique" UNIQUE("interaction_id","kind");

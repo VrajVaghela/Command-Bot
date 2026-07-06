@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "discord:register": "tsx --env-file=.env.local scripts/register-commands.ts"
+    "discord:register": "tsx --env-file=.env.local scripts/register-commands.ts",
+    "db:seed-guild": "tsx --env-file=.env.local scripts/seed-guild.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

@@ -39,8 +39,10 @@ const serverSchema = z.object({
   // Phase 4+ (Auth.js session signing). Required once auth lands.
   AUTH_SECRET: optionalString,
 
-  // Phase 3+ single-guild mirror fallback (per-guild URLs live in the DB).
+  // Phase 3+ single-guild mirror fallback (per-guild URLs/type live in the DB;
+  // this pair is only used when no `guilds` row exists yet for the guild).
   MIRROR_WEBHOOK_URL: optionalUrl,
+  MIRROR_TYPE: z.enum(["slack", "discord"]).default("discord"),
 
   // Phase 6 stretch (AI triage). Off by default; requires a free Gemini key.
   GEMINI_API_KEY: optionalString,

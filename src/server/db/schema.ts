@@ -87,22 +87,31 @@ export const interactions = pgTable("interactions", {
 });
 
 // ── actions — every downstream action taken per interaction ─────────────────
-export const actions = pgTable("actions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  interactionId: text("interaction_id")
-    .notNull()
-    .references(() => interactions.id, { onDelete: "cascade" }),
-  kind: actionKindEnum("kind").notNull(),
-  status: actionStatusEnum("status").notNull().default("pending"),
-  attempts: integer("attempts").notNull().default(0), // retry counter
-  detail: jsonb("detail"), // request/response summary, error message
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// One row per (interaction, kind): get-or-created once, then updated in place
+// across retry attempts. The unique constraint is the idempotency guarantee
+// behind "duplicate delivery -> single action set" (build_plan.md Phase 3).
+export const actions = pgTable(
+  "actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    interactionId: text("interaction_id")
+      .notNull()
+      .references(() => interactions.id, { onDelete: "cascade" }),
+    kind: actionKindEnum("kind").notNull(),
+    status: actionStatusEnum("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0), // retry counter
+    detail: jsonb("detail"), // request/response summary, error message
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("actions_interaction_kind_unique").on(t.interactionId, t.kind),
+  ],
+);
 
 // ── admin_users — dashboard login ───────────────────────────────────────────
 export const adminUsers = pgTable("admin_users", {

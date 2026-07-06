@@ -16,3 +16,10 @@ export function channelMessage(content: string, ephemeral = false) {
     },
   };
 }
+
+/** Ack now, resolve later via `followup.ts` (library_docs.md §1, ~3s window). */
+export function deferredChannelMessage() {
+  return {
+    type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+  };
+}
