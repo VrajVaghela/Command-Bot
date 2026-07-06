@@ -36,8 +36,8 @@ const serverSchema = z.object({
   // (scripts/register-commands.ts). Not needed once commands are global.
   DISCORD_DEV_GUILD_ID: optionalString,
 
-  // Phase 4+ (Auth.js session signing). Required once auth lands.
-  AUTH_SECRET: optionalString,
+  // Phase 4 (Auth.js session signing) — required now that auth is live.
+  AUTH_SECRET: z.string().min(1),
 
   // Phase 3+ single-guild mirror fallback (per-guild URLs/type live in the DB;
   // this pair is only used when no `guilds` row exists yet for the guild).

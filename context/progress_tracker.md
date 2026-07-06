@@ -5,9 +5,10 @@
 > [ui_registry.md](ui_registry.md). Mirrors [build_plan.md](build_plan.md). All boxes
 > start empty. Legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-_Last updated: 2026-07-06 — Phase 3 complete: rule engine, deferred `/report` (type 5) +
-follow-up, channel post + mirror with idempotent retry-tracked `actions` rows, and a
-`/api/mirror/retry` recovery route._
+_Last updated: 2026-07-07 — Phase 4 complete: Auth.js v5 Credentials login (bcrypt,
+JWT sessions), edge-safe `middleware.ts` + `(dashboard)` layout guard, connect-server
+flow (invite link, channel picker via bot token, mirror target), live-polling
+command/action log, per-command config UI, README + AI_NOTES drafted._
 
 ---
 
@@ -45,13 +46,15 @@ follow-up, channel post + mirror with idempotent retry-tracked `actions` rows, a
 
 ## Phase 4 — Auth & Dashboard (MVP complete)
 
-- [ ] Auth.js v5 Credentials + `admin_users` (hashed); admin seeded
-- [ ] `middleware.ts` + dashboard layout guard
-- [ ] Connect-server flow (invite link, post channel, mirror target)
-- [ ] Live command/action log
-- [ ] Command config UI (enabled, rule/template, mirror & AI toggles)
-- [ ] README.md + `.env.example` + AI_NOTES.md drafted
-- [ ] Full end-to-end pass on the live URL — **SHIP**
+- [x] Auth.js v5 Credentials + `admin_users` (hashed); admin seeded
+- [x] `middleware.ts` + dashboard layout guard
+- [x] Connect-server flow (invite link, post channel, mirror target)
+- [x] Live command/action log
+- [x] Command config UI (enabled, rule/template, mirror & AI toggles)
+- [x] README.md + `.env.example` + AI_NOTES.md drafted
+- [ ] Full end-to-end pass on the live URL — **SHIP** _(verified locally: login,
+      guarded routes, dashboard/commands/server pages all pass; live-URL pass
+      still pending an actual Vercel deploy)_
 
 ## Phase 5 — Hardening, Security & Observability
 
@@ -77,8 +80,8 @@ follow-up, channel post + mirror with idempotent retry-tracked `actions` rows, a
 
 - [ ] GitHub repo with clean commit history
 - [ ] Deployed URL working & reachable
-- [ ] README.md (what it does, run locally, env vars, deploy notes)
-- [ ] `.env.example` (no real secrets)
+- [x] README.md (what it does, run locally, env vars, deploy notes)
+- [x] `.env.example` (no real secrets)
 - [ ] Test instructions + throwaway admin login + bot invite/test server
-- [ ] AI context/instruction files included (this `context/` + `agents.md`)
-- [ ] AI_NOTES.md (~1 page)
+- [x] AI context/instruction files included (this `context/` + `agents.md`)
+- [x] AI_NOTES.md (~1 page)

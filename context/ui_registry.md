@@ -26,31 +26,33 @@
 
 | Component       | File                 | Status  | Props (key)                                                                    | Tokens used                            | Notes                                                          |
 | --------------- | -------------------- | ------- | ------------------------------------------------------------------------------ | -------------------------------------- | -------------------------------------------------------------- |
-| Button          | `ui/Button.tsx`      | planned | `variant` (primary/secondary/ghost/destructive), `size`, `loading`, `disabled` | primary/secondary/danger, ring, radius | hover/focus/disabled/loading per [ui_rules.md](ui_rules.md) §2 |
-| Input           | `ui/Input.tsx`       | planned | `type`, `error`, `label`, `mono?`                                              | input, border, ring, danger            | label + inline error, §3                                       |
-| Textarea        | `ui/Textarea.tsx`    | planned | `error`, `rows`                                                                | input, border, ring                    | §3                                                             |
-| Select          | `ui/Select.tsx`      | planned | `options`, `value`, `onChange`                                                 | input, border, ring                    | keyboard nav                                                   |
-| SecretInput     | `ui/SecretInput.tsx` | planned | `label`, `reveal`                                                              | input, danger                          | masked, reveal toggle, never pre-fills real secret             |
-| Card            | `ui/Card.tsx`        | planned | `title?`, `description?`, `footer?`                                            | card, border, radius, shadow           | §4                                                             |
-| Badge           | `ui/Badge.tsx`       | planned | `status` (received/processed/pending/failed)                                   | info/success/warning/danger            | status mapping §5                                              |
-| Table           | `ui/Table.tsx`       | planned | `columns`, `rows`, `empty`                                                     | muted, border                          | sticky header, skeleton, empty state §6                        |
-| Modal           | `ui/Modal.tsx`       | planned | `open`, `onClose`, `title`                                                     | card, overlay, radius-lg, shadow-lg    | focus trap, Esc/overlay close §7                               |
-| Toast / Toaster | `ui/Toast.tsx`       | planned | `variant`, `message`                                                           | semantic tokens                        | top-right, auto-dismiss §8                                     |
-| Spinner         | `ui/Spinner.tsx`     | planned | `size`                                                                         | foreground/muted                       | reduced-motion aware                                           |
-| Skeleton        | `ui/Skeleton.tsx`    | planned | `w`, `h`                                                                       | muted                                  | loading placeholders                                           |
-| ThemeToggle     | `ui/ThemeToggle.tsx` | planned | —                                                                              | background/foreground                  | persists dark/light §10                                        |
+| Button          | `ui/Button.tsx`      | built   | `variant` (primary/secondary/ghost/destructive), `size`, `loading`, `disabled` | primary/secondary/danger, ring, radius | hover/focus/disabled/loading per [ui_rules.md](ui_rules.md) §2 |
+| Input           | `ui/Input.tsx`       | built   | `type`, `error`, `label`, `mono?`                                              | input, border, ring, danger            | label + inline error, §3                                       |
+| Textarea        | `ui/Textarea.tsx`    | built   | `error`, `rows`                                                                | input, border, ring                    | §3, used by CommandConfigForm                                  |
+| Select          | `ui/Select.tsx`      | built   | `options`, `value`, `onChange`                                                 | input, border, ring                    | native `<select>`, keyboard nav for free                       |
+| SecretInput     | `ui/SecretInput.tsx` | built   | `label`, `reveal`                                                              | input, danger                          | masked, reveal toggle, never pre-fills real secret             |
+| Card            | `ui/Card.tsx`        | built   | `title?`, `description?`, `footer?`                                            | card, border, radius, shadow           | §4                                                             |
+| Badge           | `ui/Badge.tsx`       | built   | `status` (received/processed/success/pending/failed)                          | info/success/warning/danger            | status mapping §5                                              |
+| Table           | `ui/Table.tsx`       | built   | `columns`, `rows`, `empty`                                                     | muted, border                          | sticky header, zebra rows, empty state §6                      |
+| Modal           | `ui/Modal.tsx`       | planned | `open`, `onClose`, `title`                                                     | card, overlay, radius-lg, shadow-lg    | focus trap, Esc/overlay close §7 — not needed for MVP          |
+| Toast / Toaster | `ui/Toast.tsx`       | planned | `variant`, `message`                                                           | semantic tokens                        | top-right, auto-dismiss §8 — not needed for MVP                |
+| Spinner         | `ui/Spinner.tsx`     | built   | `size`                                                                         | foreground/muted                       | reduced-motion aware; used inline by Button's loading state    |
+| Skeleton        | `ui/Skeleton.tsx`    | planned | `w`, `h`                                                                       | muted                                  | loading placeholders — not needed (polling is instant)         |
+| ThemeToggle     | `ui/ThemeToggle.tsx` | planned | —                                                                              | background/foreground                  | dark hard-set on `<html>` for MVP; toggle deferred              |
 
 ## Feature components — `src/components/`
 
 | Component          | File                       | Status  | Purpose                                                            | Notes                          |
 | ------------------ | -------------------------- | ------- | ------------------------------------------------------------------ | ------------------------------ |
-| DashboardShell     | `dashboard-shell.tsx`      | planned | Auth-gated layout: sidebar + topbar                                | §9; guards live in layout      |
-| CommandLogTable    | `command-log-table.tsx`    | planned | Live log of interactions + actions                                 | live updates, status badges §6 |
-| ActionStatusCell   | `action-status-cell.tsx`   | planned | Renders action kind + status + attempts                            | uses Badge                     |
-| CommandConfigForm  | `command-config-form.tsx`  | planned | Edit `command_configs.rule` (enabled, template, mirror/AI toggles) | Server Action submit           |
-| ConnectServerPanel | `connect-server-panel.tsx` | planned | Bot invite link + pick post channel + mirror target                | uses SecretInput               |
-| MetricTile         | `metric-tile.tsx`          | planned | Dashboard hero metrics (counts, failure rate)                      | uses Card                      |
-| LoginForm          | `login-form.tsx`           | planned | Admin credentials login                                            | Auth.js, inline errors         |
+| DashboardShell     | `dashboard-shell.tsx`      | built   | Auth-gated layout: sidebar + topbar                                | §9; guard lives in `(dashboard)/layout.tsx` + `middleware.ts` |
+| DashboardNav       | `dashboard-nav.tsx`        | built   | Sidebar nav with active-route highlighting                         | private to DashboardShell      |
+| LiveLogPoller      | `live-log-poller.tsx`      | built   | Client `router.refresh()` every 5s                                 | renders nothing; no websocket/SSE infra per code_standards.md §4 |
+| CommandLogTable    | `command-log-table.tsx`    | built   | Live log of interactions + actions                                 | driven by LiveLogPoller, status badges §6 |
+| ActionStatusCell   | `action-status-cell.tsx`   | built   | Renders action kind + status + attempts                            | uses Badge                     |
+| CommandConfigForm  | `command-config-form.tsx`  | built   | Edit `command_configs.rule` (enabled, template, mirror/AI toggles) | Server Action submit; AI toggle disabled (Phase 6 stretch) |
+| ConnectServerPanel | `connect-server-panel.tsx` | built   | Bot invite link + pick post channel + mirror target                | uses SecretInput + Select; channel picker via bot token |
+| MetricTile         | `metric-tile.tsx`          | built   | Dashboard hero metrics (counts, failure rate)                      | uses Card                      |
+| LoginForm          | `login-form.tsx`           | built   | Admin credentials login                                            | Auth.js, `useActionState`, inline errors |
 
 ---
 
