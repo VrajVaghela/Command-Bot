@@ -1,5 +1,8 @@
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+
 import { env } from "@/lib/env";
-import { db, schema } from "@/server/db";
+import * as schema from "@/server/db/schema";
 import { REPORT_COMMAND, STATUS_COMMAND } from "@/server/discord/commands";
 
 /**
@@ -15,7 +18,14 @@ import { REPORT_COMMAND, STATUS_COMMAND } from "@/server/discord/commands";
  * Requires DISCORD_DEV_GUILD_ID in .env.local (the same test-server id used
  * by `npm run discord:register`). Mirror target defaults to the env
  * MIRROR_WEBHOOK_URL/MIRROR_TYPE fallback when --mirror-url isn't passed.
+ *
+ * Builds its own Drizzle client instead of importing `@/server/db`: that
+ * module is `import "server-only"`-guarded, which only no-ops under Next's
+ * `react-server` bundler condition — running it directly via `tsx` (as this
+ * script does) would throw.
  */
+const db = drizzle(neon(env.DATABASE_URL), { schema });
+
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i !== -1 ? process.argv[i + 1] : undefined;
