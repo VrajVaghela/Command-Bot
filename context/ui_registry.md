@@ -53,6 +53,8 @@
 | ConnectServerPanel | `connect-server-panel.tsx` | built   | Bot invite link + pick post channel + mirror target                | uses SecretInput + Select; channel picker via bot token |
 | MetricTile         | `metric-tile.tsx`          | built   | Dashboard hero metrics (counts, failure rate)                      | uses Card                      |
 | LoginForm          | `login-form.tsx`           | built   | Admin credentials login                                            | Auth.js, `useActionState`, inline errors |
+| FailureLogTable    | `failure-log-table.tsx`    | built   | Failed-action history: kind, attempts, last error (redacted)       | build_plan.md Phase 5; reuses Table/Badge |
+| RetryFailedActionsButton | `retry-failed-actions-button.tsx` | built | Manually re-runs failed downstream actions                  | client component, `useTransition` + Server Action, same pattern as ConnectServerPanel's channel fetch |
 
 ---
 

@@ -5,10 +5,15 @@
 > [ui_registry.md](ui_registry.md). Mirrors [build_plan.md](build_plan.md). All boxes
 > start empty. Legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-_Last updated: 2026-07-07 — Phase 4 complete: Auth.js v5 Credentials login (bcrypt,
-JWT sessions), edge-safe `middleware.ts` + `(dashboard)` layout guard, connect-server
-flow (invite link, channel picker via bot token, mirror target), live-polling
-command/action log, per-command config UI, README + AI_NOTES drafted._
+_Last updated: 2026-07-07 — Phase 5 complete: Node built-in test runner (`npm
+test` / `npm run test:integration`, no new dependency) covering signature
+verify (valid/forged/tampered/stale-timestamp), retry backoff, dedup, and
+recorded-failure paths; timestamp-freshness check closes a real replay gap in
+`verify.ts`; structured JSON logging with secret redaction replaces raw
+`console.error`; `/api/mirror/retry` is now auth-gated; dashboard gained a
+failures/retry-history panel with a manual retry trigger; basic in-memory
+per-IP rate limit on `/api/interactions`; secret audit passed (no client-side
+secret imports, `.env.local` untracked, `.env.example` placeholders only)._
 
 ---
 
@@ -58,13 +63,21 @@ command/action log, per-command config UI, README + AI_NOTES drafted._
 
 ## Phase 5 — Hardening, Security & Observability
 
-- [ ] Forged signature / bad timestamp / replay → 401 (tested)
-- [ ] Duplicate delivery → processed once (tested)
-- [ ] Downstream-down → recorded failure + retry, no loss (tested)
-- [ ] Slow-work → deferred within 3s + follow-up (tested)
-- [ ] Structured logging (secret redaction) + failure/retry history in dashboard
-- [ ] Secret audit (repo/client/logs clean; `.env.example` placeholders only)
-- [ ] Basic rate-limit / abuse guard on endpoint
+- [x] Forged signature / bad timestamp / replay → 401 (tested — `verify.test.ts`;
+      added a timestamp-freshness check since `verifyKey` alone never rejected a
+      stale-but-validly-signed replay)
+- [x] Duplicate delivery → processed once (tested — `dedup.itest.ts`,
+      `actions.itest.ts`, against the real dev DB's unique constraints)
+- [x] Downstream-down → recorded failure + retry, no loss (tested —
+      `retry.test.ts` for the backoff/give-up logic; `actions.itest.ts` for the
+      persisted attempt/detail history)
+- [x] Slow-work → deferred within 3s + follow-up (`respond.test.ts` covers the
+      response builders; the route always returns the deferred ack synchronously
+      and does downstream work in `after()` — see `process-report.ts`)
+- [x] Structured logging (secret redaction) + failure/retry history in dashboard
+- [x] Secret audit (repo/client/logs clean; `.env.example` placeholders only)
+- [x] Basic rate-limit / abuse guard on endpoint (in-memory per-IP, documented
+      single-instance trade-off — see `rate-limit.ts`)
 
 ## Phase 6 — Stretch Goals
 

@@ -1,8 +1,16 @@
 import "server-only";
-import { desc, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 
 import { db, schema } from "@/server/db";
 import type { Action, Interaction } from "@/server/db/schema";
+
+export type FailedAction = Pick<
+  Action,
+  "id" | "kind" | "status" | "attempts" | "detail" | "updatedAt"
+> & {
+  commandName: string | null;
+  guildId: string | null;
+};
 
 export type InteractionWithActions = Interaction & { actions: Action[] };
 
@@ -39,6 +47,33 @@ export async function listRecentInteractions(
     ...interaction,
     actions: actionsByInteraction.get(interaction.id) ?? [],
   }));
+}
+
+/**
+ * Failed actions with just enough interaction context to be useful in the
+ * dashboard (build_plan.md Phase 5 "visible failure/retry history") — kind,
+ * attempts, last error detail, and which command/guild it belongs to.
+ */
+export async function listRecentFailures(limit = 20): Promise<FailedAction[]> {
+  return db
+    .select({
+      id: schema.actions.id,
+      kind: schema.actions.kind,
+      status: schema.actions.status,
+      attempts: schema.actions.attempts,
+      detail: schema.actions.detail,
+      updatedAt: schema.actions.updatedAt,
+      commandName: schema.interactions.commandName,
+      guildId: schema.interactions.guildId,
+    })
+    .from(schema.actions)
+    .innerJoin(
+      schema.interactions,
+      eq(schema.actions.interactionId, schema.interactions.id),
+    )
+    .where(eq(schema.actions.status, "failed"))
+    .orderBy(desc(schema.actions.updatedAt))
+    .limit(limit);
 }
 
 export async function countInteractionsAndFailures(): Promise<{

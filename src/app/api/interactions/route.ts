@@ -16,6 +16,16 @@ import {
   applyReportTemplate,
 } from "@/server/discord/rules";
 import { processReportInBackground } from "@/server/discord/process-report";
+import { checkRateLimit } from "@/server/lib/rate-limit";
+import { logError, logWarn } from "@/server/lib/logger";
+
+/** Basic abuse guard (build_plan.md Phase 5) — see rate-limit.ts for the trade-off. */
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const RATE_LIMIT_WINDOW_MS = 10_000;
+
+function clientIp(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
 
 /**
  * Discord's HTTP Interactions endpoint (architecture.md §2, §4). Must, in
@@ -76,17 +86,30 @@ async function recordInteractionFailure(
       .values({ id: interactionId, guildId, type, status: "failed" })
       .onConflictDoNothing({ target: schema.interactions.id });
   } catch (error) {
-    console.error("interactions route: failed to record failure", error);
+    logError("interactions.record_failure_failed", {
+      interactionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
 export async function POST(req: NextRequest) {
+  // Cheapest possible rejection first — doesn't skip verification for
+  // anything under the limit, just blunts a flood before it reaches the DB
+  // (build_plan.md Phase 5 "basic rate-limit / abuse guard").
+  const ip = clientIp(req);
+  if (!checkRateLimit(ip, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS)) {
+    logWarn("interactions.rate_limited", { ip });
+    return new NextResponse("too many requests", { status: 429 });
+  }
+
   const rawBody = await req.text();
   const signature = req.headers.get("x-signature-ed25519");
   const timestamp = req.headers.get("x-signature-timestamp");
 
   const verified = await verifyDiscordRequest(rawBody, signature, timestamp);
   if (!verified) {
+    logWarn("interactions.signature_rejected", { ip });
     return new NextResponse("invalid request signature", { status: 401 });
   }
 
@@ -204,7 +227,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(channelMessage(replyContent));
   } catch (error) {
-    console.error("interactions route: failed to handle command", error);
+    logError("interactions.command_failed", {
+      interactionId: interaction.id,
+      commandName,
+      guildId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await recordInteractionFailure(interaction.id, interaction.type, guildId);
     return NextResponse.json(
       channelMessage("Something went wrong handling that command."),

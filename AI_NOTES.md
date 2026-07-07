@@ -31,7 +31,7 @@ components getting duplicated instead of reused.
 - The AI was asked to implement against context files it had already read, not
   against ad hoc descriptions — most prompts referenced a specific phase in
   `build_plan.md` rather than restating requirements.
-- Non-obvious decisions were left in code comments explaining *why*, not what —
+- Non-obvious decisions were left in code comments explaining _why_, not what —
   e.g. why `middleware.ts` only imports the edge-safe half of the Auth.js config
   (`src/server/auth/config.ts`) and never the Credentials/bcrypt/DB half
   (`src/server/auth.ts`), which would break on the Edge runtime.
@@ -55,3 +55,8 @@ components getting duplicated instead of reused.
 - End-to-end verification here was run against a local dev server and a real
   Neon database; the "live URL" pass in `progress_tracker.md` still needs an
   actual Vercel deploy to tick fully.
+- The Phase 5 rate limiter (`src/server/lib/rate-limit.ts`) is an in-memory
+  per-IP counter — a deliberate, documented MVP trade-off, not an oversight.
+  Vercel serverless functions don't share memory across instances, so it only
+  throttles floods landing on the same warm instance; a real deployment
+  wanting a hard guarantee would need Upstash Redis or similar.

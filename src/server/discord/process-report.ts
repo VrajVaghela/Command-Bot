@@ -6,6 +6,7 @@ import type { Action, Guild } from "@/server/db/schema";
 import { env } from "@/lib/env";
 import { type Result } from "@/lib/result";
 import { withRetry } from "@/server/lib/retry";
+import { logError } from "@/server/lib/logger";
 import { ensureAction, recordActionAttempt } from "@/server/db/actions";
 import { postToChannel } from "@/server/discord/channel-post";
 import {
@@ -49,9 +50,11 @@ async function runDownstreamAction(
   });
 
   if (!result.ok) {
-    console.error(
-      `process-report: ${kind} failed for interaction ${interactionId}: ${result.error}`,
-    );
+    logError("process_report.downstream_action_failed", {
+      interactionId,
+      kind,
+      error: result.error,
+    });
   }
 }
 
@@ -107,14 +110,15 @@ export async function processReportInBackground(
       input.ackContent,
     );
     if (!followUp.ok) {
-      console.error(
-        `process-report: follow-up failed for interaction ${input.interactionId}: ${followUp.error}`,
-      );
+      logError("process_report.follow_up_failed", {
+        interactionId: input.interactionId,
+        error: followUp.error,
+      });
     }
   } catch (error) {
-    console.error(
-      `process-report: unexpected error for interaction ${input.interactionId}:`,
-      error instanceof Error ? error.message : error,
-    );
+    logError("process_report.unexpected_error", {
+      interactionId: input.interactionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
