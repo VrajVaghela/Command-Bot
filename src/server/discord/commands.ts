@@ -11,6 +11,13 @@ const APPLICATION_COMMAND_OPTION_TYPE_STRING = 3;
 export const REPORT_COMMAND = "report";
 export const STATUS_COMMAND = "status";
 
+// Custom IDs for the button -> modal follow-up flow (build_plan.md Phase 6
+// "interactive components" + "modal form"). Namespaced strings, not enums,
+// since Discord only ever gives these back to us as opaque strings.
+export const REPORT_AGAIN_BUTTON_ID = "report_again";
+export const REPORT_MODAL_ID = "report_modal";
+export const REPORT_MODAL_MESSAGE_INPUT_ID = "message";
+
 export const commandDefinitions = [
   {
     name: STATUS_COMMAND,

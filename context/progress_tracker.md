@@ -5,15 +5,19 @@
 > [ui_registry.md](ui_registry.md). Mirrors [build_plan.md](build_plan.md). All boxes
 > start empty. Legend: `[ ]` todo · `[~]` in progress · `[x]` done.
 
-_Last updated: 2026-07-07 — Phase 5 complete: Node built-in test runner (`npm
-test` / `npm run test:integration`, no new dependency) covering signature
-verify (valid/forged/tampered/stale-timestamp), retry backoff, dedup, and
-recorded-failure paths; timestamp-freshness check closes a real replay gap in
-`verify.ts`; structured JSON logging with secret redaction replaces raw
-`console.error`; `/api/mirror/retry` is now auth-gated; dashboard gained a
-failures/retry-history panel with a manual retry trigger; basic in-memory
-per-IP rate limit on `/api/interactions`; secret audit passed (no client-side
-secret imports, `.env.local` untracked, `.env.example` placeholders only)._
+_Last updated: 2026-07-08 — Phase 6 (4 of 5 stretch goals): AI triage via
+`@google/genai` (Gemini) behind `AI_ENABLED`/`aiEnabled`, wired as a new `"ai"`
+downstream action with a single-attempt retry and a resilient no-op when
+disabled/failed; interactive components + modal form shipped together — the
+`/report` follow-up now carries a "File another report" button
+(MESSAGE_COMPONENT) that opens a modal (MODAL_SUBMIT) reusing the exact
+`/report` pipeline via a shared `handleReportSubmission`; multi-server
+isolation — dashboard pages (`/server`, `/commands`, `/dashboard`) gained a
+`GuildSwitcher` and now scope every query by the selected guild instead of
+assuming a single connected server; deeper observability — per-kind
+(discord_reply/mirror/ai) success/failed/pending breakdown and an
+approximate retry-latency table, both derived from existing columns (no
+migration).
 
 ---
 
@@ -81,11 +85,17 @@ secret imports, `.env.local` untracked, `.env.example` placeholders only)._
 
 ## Phase 6 — Stretch Goals
 
-- [ ] AI triage via Gemini (flagged, free, resilient)
-- [ ] Interactive components (button → MESSAGE_COMPONENT follow-up)
-- [ ] Modal form (`/report` → MODAL_SUBMIT)
-- [ ] Multi-server isolation + per-guild config
-- [ ] Deeper observability (metrics, retry timelines)
+- [x] AI triage via Gemini (flagged, free, resilient — `server/ai/gemini.ts`,
+      single-attempt retry, disabled/failure degrades to the plain reply)
+- [x] Interactive components (button → MESSAGE_COMPONENT follow-up — the
+      "File another report" button on the `/report` follow-up)
+- [x] Modal form (`/report` → MODAL_SUBMIT — the button opens a modal that
+      reuses the exact `/report` pipeline via `handleReportSubmission`)
+- [x] Multi-server isolation + per-guild config (`GuildSwitcher` + `?guild=`
+      scoping across `/server`, `/commands`, `/dashboard`)
+- [x] Deeper observability (metrics, retry timelines — per-kind
+      success/failed/pending breakdown + approximate latency table, both
+      derived from existing columns, no migration)
 
 ---
 

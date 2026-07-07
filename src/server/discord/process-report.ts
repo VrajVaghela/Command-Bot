@@ -14,37 +14,45 @@ import {
   type MirrorTarget,
 } from "@/server/mirror/send-mirror";
 import { editOriginalResponse } from "@/server/discord/followup";
+import { reportAgainButtonRow } from "@/server/discord/respond";
 import type { CommandRule } from "@/server/discord/rules";
+import { triageReport } from "@/server/ai/gemini";
 
 export type ProcessReportInput = {
   interactionId: string;
   interactionToken: string;
   guildId: string;
+  /** The raw reported text, pre-template — what AI triage should read. */
+  reportMessage: string;
   ackContent: string;
   rule: CommandRule;
 };
 
 /**
- * Runs one downstream action (`discord_reply` or `mirror`) through the
+ * Runs one downstream action (`discord_reply`, `mirror`, or `ai`) through the
  * get-or-create + bounded-retry pipeline, recording every attempt. Never
  * throws — failures stay in the `actions` row for later inspection/retry
- * (`/api/mirror/retry`).
+ * (`/api/mirror/retry`). Returns the `Result` so callers that need the
+ * value (e.g. the AI summary) can use it; a skipped duplicate-delivery
+ * returns a `success`-shaped placeholder since the row already recorded one.
  */
-async function runDownstreamAction(
+async function runDownstreamAction<T = void>(
   interactionId: string,
   kind: Action["kind"],
-  send: () => Promise<Result<void>>,
-): Promise<void> {
+  send: () => Promise<Result<T>>,
+  options: { maxRetries?: number } = {},
+): Promise<Result<T | void>> {
   const action = await ensureAction(interactionId, kind);
-  if (action.status === "success") return; // already done — duplicate delivery
+  if (action.status === "success") return { ok: true, value: undefined };
 
   const result = await withRetry(send, {
+    maxRetries: options.maxRetries,
     onAttempt: (attemptNumber, attemptResult) =>
       recordActionAttempt(action.id, {
         status: attemptResult.ok ? "success" : "failed",
         attempts: attemptNumber,
         detail: attemptResult.ok
-          ? { ok: true }
+          ? { ok: true, value: attemptResult.value }
           : { error: attemptResult.error },
       }),
   });
@@ -56,6 +64,7 @@ async function runDownstreamAction(
       error: result.error,
     });
   }
+  return result;
 }
 
 /** Guild's configured mirror target, else the single-guild env fallback. */
@@ -105,9 +114,25 @@ export async function processReportInBackground(
       }
     }
 
+    let followUpContent = input.ackContent;
+    if (input.rule.aiEnabled && env.AI_ENABLED) {
+      // Single attempt — a free-tier LLM call isn't worth 3x retrying inside
+      // the 20s background-work budget (library_docs.md §5 "resilient").
+      const triage = await runDownstreamAction(
+        input.interactionId,
+        "ai",
+        () => triageReport(input.reportMessage),
+        { maxRetries: 1 },
+      );
+      if (triage.ok && triage.value) {
+        followUpContent = `${input.ackContent}\n\n🤖 ${triage.value.summary}`;
+      }
+    }
+
     const followUp = await editOriginalResponse(
       input.interactionToken,
-      input.ackContent,
+      followUpContent,
+      { components: [reportAgainButtonRow()] },
     );
     if (!followUp.ok) {
       logError("process_report.follow_up_failed", {

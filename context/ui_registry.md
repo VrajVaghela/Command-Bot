@@ -49,12 +49,15 @@
 | LiveLogPoller      | `live-log-poller.tsx`      | built   | Client `router.refresh()` every 5s                                 | renders nothing; no websocket/SSE infra per code_standards.md §4 |
 | CommandLogTable    | `command-log-table.tsx`    | built   | Live log of interactions + actions                                 | driven by LiveLogPoller, status badges §6 |
 | ActionStatusCell   | `action-status-cell.tsx`   | built   | Renders action kind + status + attempts                            | uses Badge                     |
-| CommandConfigForm  | `command-config-form.tsx`  | built   | Edit `command_configs.rule` (enabled, template, mirror/AI toggles) | Server Action submit; AI toggle disabled (Phase 6 stretch) |
+| CommandConfigForm  | `command-config-form.tsx`  | built   | Edit `command_configs.rule` (enabled, template, mirror/AI toggles) | Server Action submit; AI toggle live (Phase 6 — Gemini triage) |
 | ConnectServerPanel | `connect-server-panel.tsx` | built   | Bot invite link + pick post channel + mirror target                | uses SecretInput + Select; channel picker via bot token |
 | MetricTile         | `metric-tile.tsx`          | built   | Dashboard hero metrics (counts, failure rate)                      | uses Card                      |
 | LoginForm          | `login-form.tsx`           | built   | Admin credentials login                                            | Auth.js, `useActionState`, inline errors |
 | FailureLogTable    | `failure-log-table.tsx`    | built   | Failed-action history: kind, attempts, last error (redacted)       | build_plan.md Phase 5; reuses Table/Badge |
 | RetryFailedActionsButton | `retry-failed-actions-button.tsx` | built | Manually re-runs failed downstream actions                  | client component, `useTransition` + Server Action, same pattern as ConnectServerPanel's channel fetch |
+| GuildSwitcher      | `guild-switcher.tsx`       | built   | Switches which connected guild the dashboard scopes to             | client component; writes `?guild=` via `useRouter`; renders nothing when ≤1 guild connected; build_plan.md Phase 6 "multi-server" |
+| MetricsByKindPanel | `metrics-by-kind-panel.tsx` | built  | Per-kind (discord_reply/mirror/ai) success/pending/failed bar       | status tokens only (success/warning/danger), Card primitive; build_plan.md Phase 6 "deeper observability" |
+| ActionLatencyTable | `action-latency-table.tsx` | built   | Recent actions with attempts + approximate latency                 | reuses Table/Badge; latency derived from `created_at`/`updated_at`, no new schema |
 
 ---
 

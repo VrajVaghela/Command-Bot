@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -107,4 +108,8 @@ export async function saveGuildConnection(formData: FormData): Promise<void> {
   revalidatePath("/server");
   revalidatePath("/commands");
   revalidatePath("/dashboard");
+  // Select the just-saved guild so multi-server admins land on what they edited
+  // (build_plan.md Phase 6 "multi-server") — redirect() throws, so this must
+  // be the last statement.
+  redirect(`/server?guild=${parsed.data.guildId}`);
 }

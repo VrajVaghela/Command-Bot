@@ -2,14 +2,26 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 
 import { CommandConfigForm } from "@/components/command-config-form";
+import { GuildSwitcher } from "@/components/guild-switcher";
 import { db, schema } from "@/server/db";
+import { listConnectedGuilds } from "@/server/db/guilds";
 import { commandDefinitions } from "@/server/discord/commands";
 import type { CommandConfig } from "@/server/db/schema";
 
 export const dynamic = "force-dynamic";
 
-export default async function CommandsPage() {
-  const guild = await db.query.guilds.findFirst();
+export default async function CommandsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ guild?: string }>;
+}) {
+  const [guilds, { guild: requestedGuildId }] = await Promise.all([
+    listConnectedGuilds(),
+    searchParams,
+  ]);
+
+  const guild =
+    guilds.find((g) => g.id === requestedGuildId) ?? guilds[0] ?? null;
 
   if (!guild) {
     return (
@@ -44,7 +56,10 @@ export default async function CommandsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold">Command configuration</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Command configuration</h2>
+        <GuildSwitcher guilds={guilds} selectedGuildId={guild.id} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {configs.map((config) => (
           <CommandConfigForm key={config.commandName} config={config} />

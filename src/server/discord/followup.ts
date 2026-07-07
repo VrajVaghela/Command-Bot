@@ -9,6 +9,7 @@ import { type Result, ok, err } from "@/lib/result";
 export async function editOriginalResponse(
   interactionToken: string,
   content: string,
+  options: { components?: unknown[] } = {},
 ): Promise<Result<void>> {
   const url = `https://discord.com/api/v10/webhooks/${env.DISCORD_APP_ID}/${interactionToken}/messages/@original`;
 
@@ -16,7 +17,10 @@ export async function editOriginalResponse(
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        ...(options.components ? { components: options.components } : {}),
+      }),
     });
     if (!res.ok) {
       return err(`discord followup PATCH failed: ${res.status}`);

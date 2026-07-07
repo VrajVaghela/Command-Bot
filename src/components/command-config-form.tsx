@@ -42,15 +42,14 @@ export function CommandConfigForm({ config }: { config: CommandConfig }) {
           Mirror to second channel
         </label>
 
-        <label className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+        <label className="flex items-center gap-2 text-sm font-medium">
           <input
             type="checkbox"
             name="aiEnabled"
             defaultChecked={rule.aiEnabled}
-            disabled
             className="accent-primary size-4"
           />
-          AI triage (stretch — not yet enabled)
+          AI triage (Gemini summary + tags)
         </label>
 
         <Button type="submit" size="sm" className="self-start">

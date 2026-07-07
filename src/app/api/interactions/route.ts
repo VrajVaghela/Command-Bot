@@ -9,11 +9,19 @@ import {
   channelMessage,
   deferredChannelMessage,
   pong,
+  reportModal,
 } from "@/server/discord/respond";
-import { REPORT_COMMAND, STATUS_COMMAND } from "@/server/discord/commands";
+import {
+  REPORT_AGAIN_BUTTON_ID,
+  REPORT_COMMAND,
+  REPORT_MODAL_ID,
+  REPORT_MODAL_MESSAGE_INPUT_ID,
+  STATUS_COMMAND,
+} from "@/server/discord/commands";
 import {
   resolveCommandConfig,
   applyReportTemplate,
+  type ResolvedCommandConfig,
 } from "@/server/discord/rules";
 import { processReportInBackground } from "@/server/discord/process-report";
 import { checkRateLimit } from "@/server/lib/rate-limit";
@@ -48,6 +56,16 @@ const interactionOptionSchema = z.object({
   value: z.union([z.string(), z.number(), z.boolean()]).optional(),
 });
 
+/** One text-input value nested inside a MODAL_SUBMIT action row (library_docs.md §1). */
+const modalComponentSchema = z.object({
+  custom_id: z.string(),
+  value: z.string().optional(),
+});
+
+const modalActionRowSchema = z.object({
+  components: z.array(modalComponentSchema),
+});
+
 const interactionSchema = z.object({
   id: z.string(),
   type: z.number(),
@@ -57,11 +75,27 @@ const interactionSchema = z.object({
   user: interactionUserSchema.optional(),
   data: z
     .object({
-      name: z.string(),
+      name: z.string().optional(),
       options: z.array(interactionOptionSchema).optional(),
+      // MESSAGE_COMPONENT (type 3) and MODAL_SUBMIT (type 5) dispatch key.
+      custom_id: z.string().optional(),
+      // MODAL_SUBMIT payload: array of action rows, each holding text inputs.
+      components: z.array(modalActionRowSchema).optional(),
     })
     .optional(),
 });
+
+/** Pulls a named text-input's value out of a MODAL_SUBMIT's nested components. */
+function extractModalValue(
+  components: z.infer<typeof modalActionRowSchema>[] | undefined,
+  customId: string,
+): string | undefined {
+  for (const row of components ?? []) {
+    const match = row.components.find((c) => c.custom_id === customId);
+    if (match?.value !== undefined) return match.value;
+  }
+  return undefined;
+}
 
 /** Reprocessing a delivered interaction is a no-op returning the recorded result (architecture.md §4.6). */
 async function fetchRecordedReply(
@@ -91,6 +125,88 @@ async function recordInteractionFailure(
       error: error instanceof Error ? error.message : String(error),
     });
   }
+}
+
+/** Best-effort log of the button click that opened the report modal — no downstream work to defer. */
+async function recordModalOpened(
+  interactionId: string,
+  guildId: string | null,
+  type: number,
+): Promise<void> {
+  try {
+    await db
+      .insert(schema.interactions)
+      .values({
+        id: interactionId,
+        guildId,
+        type,
+        commandName: REPORT_COMMAND,
+        status: "processed",
+        responseSummary: "opened report modal",
+      })
+      .onConflictDoNothing({ target: schema.interactions.id });
+  } catch (error) {
+    logError("interactions.record_modal_opened_failed", {
+      interactionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * Shared by the `/report` slash command and the modal-submit follow-up
+ * (build_plan.md Phase 6 "modal form") — both dedup, defer, and schedule the
+ * exact same background pipeline (`process-report.ts`).
+ */
+async function handleReportSubmission(input: {
+  interactionId: string;
+  interactionToken: string;
+  interactionType: number;
+  guildId: string;
+  user: { id: string; username: string } | undefined;
+  config: ResolvedCommandConfig;
+  message: string;
+  payload: unknown;
+}): Promise<NextResponse> {
+  const ackContent = applyReportTemplate(input.config.rule, input.message);
+
+  const inserted = await db
+    .insert(schema.interactions)
+    .values({
+      id: input.interactionId,
+      guildId: input.guildId,
+      type: input.interactionType,
+      commandName: REPORT_COMMAND,
+      userId: input.user?.id ?? null,
+      userName: input.user?.username ?? null,
+      payload: input.payload,
+      status: "processed",
+      responseSummary: ackContent,
+    })
+    .onConflictDoNothing({ target: schema.interactions.id })
+    .returning({ responseSummary: schema.interactions.responseSummary });
+
+  if (!inserted[0]) {
+    // Duplicate delivery: reply with the already-recorded result. Never
+    // re-run the rule engine or schedule downstream work again.
+    const recorded =
+      (await fetchRecordedReply(input.interactionId)) ?? ackContent;
+    return NextResponse.json(channelMessage(recorded));
+  }
+
+  // Defer: the channel post + mirror + AI triage + follow-up happen after
+  // this HTTP response is sent (build_plan.md Phase 3 "immediate vs deferred").
+  after(() =>
+    processReportInBackground({
+      interactionId: input.interactionId,
+      interactionToken: input.interactionToken,
+      guildId: input.guildId,
+      reportMessage: input.message,
+      ackContent,
+      rule: input.config.rule,
+    }),
+  );
+  return NextResponse.json(deferredChannelMessage());
 }
 
 export async function POST(req: NextRequest) {
@@ -123,22 +239,74 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(pong());
   }
 
-  if (
-    interaction.type !== InteractionType.APPLICATION_COMMAND ||
-    !interaction.data
-  ) {
+  const isSupportedType =
+    interaction.type === InteractionType.APPLICATION_COMMAND ||
+    interaction.type === InteractionType.MESSAGE_COMPONENT ||
+    interaction.type === InteractionType.MODAL_SUBMIT;
+
+  if (!isSupportedType || !interaction.data) {
     return NextResponse.json(channelMessage("Unsupported interaction type."));
   }
 
   const commandName = interaction.data.name;
+  const customId = interaction.data.custom_id;
   const user = interaction.member?.user ?? interaction.user;
   const guildId = interaction.guild_id ?? null;
 
   // Never throw across the Discord response path (code_standards.md §5) — any
   // unexpected failure still gets a valid, if generic, interaction response.
   try {
+    // The "File another report" button — MESSAGE_COMPONENT (type 3) follow-up
+    // (build_plan.md Phase 6 "interactive components").
+    if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+      if (customId === REPORT_AGAIN_BUTTON_ID) {
+        const config = await resolveCommandConfig(guildId, REPORT_COMMAND);
+        if (!config.enabled) {
+          return NextResponse.json(
+            channelMessage("The /report command is currently disabled."),
+          );
+        }
+        await recordModalOpened(interaction.id, guildId, interaction.type);
+        return NextResponse.json(reportModal());
+      }
+      return NextResponse.json(channelMessage("Unsupported action."));
+    }
+
+    // The report modal's submission — MODAL_SUBMIT (type 5) (build_plan.md
+    // Phase 6 "modal form"). Reuses the exact `/report` pipeline.
+    if (interaction.type === InteractionType.MODAL_SUBMIT) {
+      if (customId === REPORT_MODAL_ID) {
+        if (!guildId) {
+          return NextResponse.json(
+            channelMessage("/report can only be used inside a server."),
+          );
+        }
+        const config = await resolveCommandConfig(guildId, REPORT_COMMAND);
+        if (!config.enabled) {
+          return NextResponse.json(
+            channelMessage("The /report command is currently disabled."),
+          );
+        }
+        const message = extractModalValue(
+          interaction.data.components,
+          REPORT_MODAL_MESSAGE_INPUT_ID,
+        );
+        return await handleReportSubmission({
+          interactionId: interaction.id,
+          interactionToken: interaction.token,
+          interactionType: interaction.type,
+          guildId,
+          user,
+          config,
+          message: message ?? "(no message)",
+          payload: interaction.data.components ?? null,
+        });
+      }
+      return NextResponse.json(channelMessage("Unsupported action."));
+    }
+
     // Command behavior is DB-driven, not hard-coded (agents.md §2/§3).
-    const config = await resolveCommandConfig(guildId, commandName);
+    const config = await resolveCommandConfig(guildId, commandName ?? "");
     if (!config.enabled) {
       return NextResponse.json(
         channelMessage(`The /${commandName} command is currently disabled.`),
@@ -155,47 +323,16 @@ export async function POST(req: NextRequest) {
       const message = interaction.data.options?.find(
         (o) => o.name === "message",
       )?.value;
-      const ackContent = applyReportTemplate(
-        config.rule,
-        typeof message === "string" ? message : "(no message)",
-      );
-
-      const inserted = await db
-        .insert(schema.interactions)
-        .values({
-          id: interaction.id,
-          guildId,
-          type: interaction.type,
-          commandName,
-          userId: user?.id ?? null,
-          userName: user?.username ?? null,
-          payload: interaction.data.options ?? null,
-          status: "processed",
-          responseSummary: ackContent,
-        })
-        .onConflictDoNothing({ target: schema.interactions.id })
-        .returning({ responseSummary: schema.interactions.responseSummary });
-
-      if (!inserted[0]) {
-        // Duplicate delivery: reply with the already-recorded result. Never
-        // re-run the rule engine or schedule downstream work again.
-        const recorded =
-          (await fetchRecordedReply(interaction.id)) ?? ackContent;
-        return NextResponse.json(channelMessage(recorded));
-      }
-
-      // Defer: the channel post + mirror + follow-up happen after this HTTP
-      // response is sent (build_plan.md Phase 3 "immediate vs deferred").
-      after(() =>
-        processReportInBackground({
-          interactionId: interaction.id,
-          interactionToken: interaction.token,
-          guildId,
-          ackContent,
-          rule: config.rule,
-        }),
-      );
-      return NextResponse.json(deferredChannelMessage());
+      return await handleReportSubmission({
+        interactionId: interaction.id,
+        interactionToken: interaction.token,
+        interactionType: interaction.type,
+        guildId,
+        user,
+        config,
+        message: typeof message === "string" ? message : "(no message)",
+        payload: interaction.data.options ?? null,
+      });
     }
 
     // /status (and any other simple command): immediate reply, no downstream actions.
