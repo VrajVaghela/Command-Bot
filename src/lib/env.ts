@@ -70,10 +70,19 @@ function formatIssues(error: z.ZodError): string {
     .join("\n");
 }
 
+/** `next build` sets this while importing modules to collect page data. */
+const isProductionBuild =
+  process.env.NEXT_PHASE === "phase-production-build";
+
 function parseServerEnv(): ServerEnv {
   const parsed = serverSchema.safeParse(process.env);
   if (!parsed.success) {
-    // Fail fast and loud, but never echo the offending values (secrets).
+    // During a production build, secrets legitimately may not be present
+    // (they're runtime config). Don't crash the build — fall back to raw
+    // process.env so module evaluation completes; the real validation still
+    // runs (and throws) on the first access in a running server.
+    if (isProductionBuild) return process.env as unknown as ServerEnv;
+    // Otherwise fail fast and loud, but never echo the offending values.
     throw new Error(
       `Invalid server environment variables:\n${formatIssues(parsed.error)}`,
     );
@@ -94,18 +103,41 @@ function parseClientEnv(): ClientEnv {
   return parsed.data;
 }
 
-const serverEnvGuard = new Proxy({} as ServerEnv, {
-  get() {
-    throw new Error(
-      "Server env was accessed on the client. Read `env` only from server code " +
-        "(`src/server/**`, Server Components/Actions); use `clientEnv` in the browser.",
-    );
+/**
+ * Validate lazily and memoize: the server schema is parsed on the FIRST
+ * property read, not at import. This keeps the fail-fast guarantee — the first
+ * server code path to touch `env` still throws on a missing/invalid var — while
+ * letting `next build` import server modules without every runtime secret being
+ * present in the build environment. Eager validation at import is why a
+ * production build died during "Collecting page data" whenever a required var
+ * (the Discord/Auth secrets added in Phases 2/4) wasn't set in Vercel: Next
+ * imports every route/page module to collect data, which ran this validation
+ * before the app ever handled a request. Secrets are still required at runtime.
+ */
+let cachedServerEnv: ServerEnv | undefined;
+function getServerEnv(): ServerEnv {
+  // Never memoize the build-phase fallback — a real server process (where
+  // NEXT_PHASE is unset) must run full validation on its own first access.
+  if (isProductionBuild) return parseServerEnv();
+  return (cachedServerEnv ??= parseServerEnv());
+}
+
+/**
+ * Validated server env. Import only from server code. Reading any property on
+ * the client throws (secrets must never reach the browser); on the server the
+ * first read triggers one-time validation.
+ */
+export const env: ServerEnv = new Proxy({} as ServerEnv, {
+  get(_target, prop) {
+    if (typeof window !== "undefined") {
+      throw new Error(
+        "Server env was accessed on the client. Read `env` only from server code " +
+          "(`src/server/**`, Server Components/Actions); use `clientEnv` in the browser.",
+      );
+    }
+    return getServerEnv()[prop as keyof ServerEnv];
   },
 });
-
-/** Validated server env. Import only from server code. Throws if read on the client. */
-export const env: ServerEnv =
-  typeof window === "undefined" ? parseServerEnv() : serverEnvGuard;
 
 /** Validated client-safe env. Safe to import anywhere. */
 export const clientEnv: ClientEnv = parseClientEnv();
